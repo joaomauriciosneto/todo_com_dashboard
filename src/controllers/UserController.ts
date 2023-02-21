@@ -1,8 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
-import { Types } from 'mongoose';
 import Controller from './Controller';
 import User from '../schemas/User';
 import ValidatorService from '../services/ValidatorService';
+import HttpStatusCode from '../responses/HttpStatusCode';
+import ServerErrorException from '../errors/ServerErrorException';
+import IdInvalidException from '../errors/IdInvalidException';
+import NoContentException from '../errors/NoContentException';
 
 class UserController extends Controller {
   constructor() {
@@ -18,78 +21,82 @@ class UserController extends Controller {
   }
 
   private async list(req: Request, res: Response, next: NextFunction): Promise<Response> {
-    const users = await User.find();
+    try {
+      const users = await User.find();
 
-    if (users.length === 0) {
-      return res.status(400).send({
-        msg: 'No users!',
-      });
+      if (users.length === 0) {
+        return res.status(400).send({
+          msg: 'No users!',
+        });
+      }
+
+      return res.status(200).send(users);
+    } catch (error) {
+      return res.send(new ServerErrorException(error));
     }
-
-    return res.status(200).send(users);
   }
 
   private async findById(req: Request, res: Response, next: NextFunction): Promise<Response> {
-    const { id } = req.params;
+    try {
+      const { id } = req.params;
 
-    if (ValidatorService.validateId(id)) {
-      return res.status(404).send({
-        msg: 'User not found!',
-      });
+      if (ValidatorService.validateId(id)) {
+        return res.status(HttpStatusCode.BAD_REQUEST).send(new IdInvalidException());
+      }
+
+      const user = await User.findById(id);
+
+      return res.status(200).send(user);
+    } catch (error) {
+      return res.send(new ServerErrorException(error));
     }
-
-    const userExist = await User.find();
-
-    if (userExist.length === 0) {
-      return res.status(400).send({
-        msg: 'No users!',
-      });
-    }
-
-    const user = await User.findById(id);
-
-    return res.status(200).send(user);
   }
 
   private async create(req: Request, res: Response, next: NextFunction): Promise<Response> {
-    const user = await User.create(req.body);
+    try {
+      const user = await User.create(req.body);
 
-    return res.status(201).send(user);
+      return res.status(201).send(user);
+    } catch (error) {
+      return res.send(new ServerErrorException(error));
+    }
   }
 
   private async edit(req: Request, res: Response, next: NextFunction): Promise<Response> {
-    const { id } = req.params;
+    try {
+      const { id } = req.params;
 
-    if (ValidatorService.validateId(id)) {
-      return res.status(404).send({
-        msg: 'User not found!',
-      });
+      if (ValidatorService.validateId(id)) {
+        return res.status(HttpStatusCode.BAD_REQUEST).send(new IdInvalidException());
+      }
+
+      const user = await User.findByIdAndUpdate(id, req.body, () => {});
+
+      return res.status(200).send(user);
+    } catch (error) {
+      return res.send(new ServerErrorException(error));
     }
-
-    const user = await User.findByIdAndUpdate(id, req.body, () => {});
-
-    return res.status(200).send(user);
   }
 
   private async delete(req: Request, res: Response, next: NextFunction): Promise<Response> {
-    const { id } = req.params;
+    try {
+      const { id } = req.params;
 
-    if (ValidatorService.validateId(id)) {
-      return res.status(404).send({
-        msg: 'User not found!',
-      });
+      if (ValidatorService.validateId(id)) {
+        return res.status(HttpStatusCode.BAD_REQUEST).send(new IdInvalidException());
+      }
+
+      const user = await User.findById(id);
+
+      if (user) {
+        user.deleteOne();
+        return res.send(user);
+      }
+      // não funcionou o (new NoContentException())
+      return res.status(HttpStatusCode.NO_CONTENT).send();
+    } catch (error) {
+      return res.send(new ServerErrorException(error));
     }
-
-    const user = await User.findById(id);
-
-    if (user) {
-      user.deleteOne();
-      return res.status(200).send({
-        msg: 'User deleted successfully!',
-        data: user,
-      });
-    }
-    return res.status(204).send();
   }
 }
 
