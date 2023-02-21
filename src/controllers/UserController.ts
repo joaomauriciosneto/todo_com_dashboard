@@ -6,6 +6,8 @@ import HttpStatusCode from '../responses/HttpStatusCode';
 import ServerErrorException from '../errors/ServerErrorException';
 import IdInvalidException from '../errors/IdInvalidException';
 import NoContentException from '../errors/NoContentException';
+import responseCreate from '../responses/ResponseCreate';
+import responseOk from '../responses/ResponseOk';
 
 class UserController extends Controller {
   constructor() {
@@ -30,7 +32,7 @@ class UserController extends Controller {
         });
       }
 
-      return res.status(200).send(users);
+      return responseOk(res, users);
     } catch (error) {
       return res.send(new ServerErrorException(error));
     }
@@ -46,7 +48,7 @@ class UserController extends Controller {
 
       const user = await User.findById(id);
 
-      return res.status(200).send(user);
+      return responseOk(res, user);
     } catch (error) {
       return res.send(new ServerErrorException(error));
     }
@@ -56,7 +58,7 @@ class UserController extends Controller {
     try {
       const user = await User.create(req.body);
 
-      return res.status(201).send(user);
+      return responseCreate(res, user);
     } catch (error) {
       return res.send(new ServerErrorException(error));
     }
@@ -72,7 +74,7 @@ class UserController extends Controller {
 
       const user = await User.findByIdAndUpdate(id, req.body, () => {});
 
-      return res.status(200).send(user);
+      return responseOk(res, user);
     } catch (error) {
       return res.send(new ServerErrorException(error));
     }
@@ -90,7 +92,7 @@ class UserController extends Controller {
 
       if (user) {
         user.deleteOne();
-        return res.send(user);
+        return responseOk(res, user);
       }
 
       return res.status(HttpStatusCode.NO_CONTENT).send(new NoContentException());
