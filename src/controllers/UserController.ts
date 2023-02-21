@@ -92,8 +92,8 @@ class UserController extends Controller {
         user.deleteOne();
         return res.send(user);
       }
-      // não funcionou o (new NoContentException())
-      return res.status(HttpStatusCode.NO_CONTENT).send();
+
+      return res.status(HttpStatusCode.NO_CONTENT).send(new NoContentException());
     } catch (error) {
       return res.send(new ServerErrorException(error));
     }
