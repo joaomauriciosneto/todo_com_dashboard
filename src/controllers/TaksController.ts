@@ -1,20 +1,20 @@
 import { NextFunction, Request, Response } from 'express';
 import Controller from './Controller';
-import User from '../schemas/User';
 import ValidatorService from '../services/ValidatorService';
 import ServerErrorException from '../errors/ServerErrorException';
 import NoContentException from '../errors/NoContentException';
 import responseCreate from '../responses/ResponseCreate';
 import responseOk from '../responses/ResponseOk';
-import UserService from '../services/UserService';
+import Task, { TaskInterface } from '../schemas/Task';
+import TaskService from '../services/TaskService';
 
-class UserController extends Controller {
+class TaskController extends Controller {
   constructor() {
-    super('/user');
+    super('/task');
   }
 
   protected initRoutes(): void {
-    this.router.get(this.path, this.list);
+    this.router.get(`${this.path}/:filter/:_id`, this.list);
     this.router.get(`${this.path}/:id`, this.findById);
     this.router.post(this.path, this.create);
     this.router.put(`${this.path}/:id`, this.edit);
@@ -23,9 +23,13 @@ class UserController extends Controller {
 
   private async list(req: Request, res: Response, next: NextFunction): Promise<Response | undefined> {
     try {
-      const users = await User.find();
+      // const tasks = await Task.find(TaskService.getParamsList(req))
 
-      if (users.length) return responseOk(res, users);
+      const query = TaskService.getParamsList(req);
+
+      const tasks = await Task.find(query || {});
+
+      if (tasks.length) return responseOk(res, tasks);
 
       next(new NoContentException());
     } catch (error) {
@@ -39,9 +43,9 @@ class UserController extends Controller {
 
       if (ValidatorService.validateId(id, next)) return;
 
-      const user = await User.findById(id);
+      const task = await Task.findById(id);
 
-      if (user) return responseOk(res, user);
+      if (task) return responseOk(res, task);
 
       next(new NoContentException());
     } catch (error) {
@@ -51,9 +55,18 @@ class UserController extends Controller {
 
   private async create(req: Request, res: Response, next: NextFunction): Promise<Response | undefined> {
     try {
-      const user = await User.create(req.body);
+      let task: TaskInterface | null = req.body;
 
-      return responseCreate(res, user);
+      if (!task) {
+        throw new Error('Taks cannot be null!');
+      }
+
+      TaskService.checkStatusFinished(task);
+
+      task = await Task.create(task);
+      task = await Task.findById(task.id).populate('responsible');
+
+      return responseCreate(res, task);
     } catch (error) {
       next(new ServerErrorException(error));
     }
@@ -65,9 +78,20 @@ class UserController extends Controller {
 
       if (ValidatorService.validateId(id, next)) return;
 
-      const user = await User.findByIdAndUpdate(id, req.body, () => {});
+      let task: TaskInterface | null = req.body;
 
-      if (user) return responseOk(res, user);
+      if (!task) {
+        throw new Error('Task cannot be null');
+      }
+
+      TaskService.checkStatusFinished(task);
+
+      task = await Task.findByIdAndUpdate(id, req.body, () => {});
+
+      if (task) {
+        task = await Task.findById(task.id).populate('responsible');
+        return responseOk(res, task);
+      }
 
       next(new NoContentException());
     } catch (error) {
@@ -81,13 +105,11 @@ class UserController extends Controller {
 
       if (ValidatorService.validateId(id, next)) return;
 
-      if (await UserService.validateExistAnyTask(id, next)) return;
+      const task = await Task.findById(id);
 
-      const user = await User.findById(id);
-
-      if (user) {
-        user.deleteOne();
-        return responseOk(res, user);
+      if (task) {
+        task.deleteOne();
+        return responseOk(res, task);
       }
 
       next(new NoContentException());
@@ -97,4 +119,4 @@ class UserController extends Controller {
   }
 }
 
-export default UserController;
+export default TaskController;
