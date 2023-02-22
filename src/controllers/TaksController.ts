@@ -86,7 +86,7 @@ class TaskController extends Controller {
 
       TaskService.checkStatusFinished(task);
 
-      task = await Task.findByIdAndUpdate(id, req.body, () => {});
+      task = await Task.findByIdAndUpdate(id, task, () => {});
 
       if (task) {
         task = await Task.findById(task.id).populate('responsible');
